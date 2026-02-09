@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Hollywood Gin Rummy</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-neutral-900 p-4">
+<div class="max-w-5xl mx-auto">
+<div class="bg-white rounded-xl shadow-xl overflow-hidden">
+<div class="bg-gradient-to-r from-neutral-800 to-neutral-700 px-6 py-5 flex justify-between items-center border-b border-neutral-600">
+<div>
+<h1 class="text-2xl font-light tracking-wide text-white">Hollywood Gin Rummy</h1>
+<p class="text-neutral-300 text-sm mt-1" id="status"></p>
+</div>
+<button onclick="toggleSettings()" class="p-2 text-neutral-300 hover:text-white transition-colors">⚙️</button>
+</div>
+<div class="p-6">
+<div class="bg-neutral-50 border border-neutral-200 rounded-lg p-5 mb-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-sm font-medium text-neutral-600 uppercase tracking-wider">Session Balance</h3>
+<button onclick="toggleBalanceEdit()" class="text-xs text-neutral-500 hover:text-neutral-700 uppercase tracking-wider" id="adjustBtn">Adjust</button>
+</div>
+<div id="balanceDisplay"></div>
+<div id="balanceEdit" style="display:none"></div>
+</div>
+<div id="completeMsg" style="display:none" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-center">
+<p class="font-medium text-amber-900">Round Complete</p>
+<p class="text-sm text-amber-700 mt-1">Start a new round to continue</p>
+</div>
+<div id="settingsPanel" style="display:none" class="bg-neutral-50 border border-neutral-200 rounded-lg p-5 mb-6">
+<h3 class="text-sm font-medium text-neutral-600 uppercase tracking-wider mb-4">Settings</h3>
+<div class="grid grid-cols-3 gap-4">
+<div><label class="block text-xs text-neutral-600 mb-1 uppercase tracking-wider">Winning Score</label><input type="number" id="winningScore" class="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"></div>
+<div><label class="block text-xs text-neutral-600 mb-1 uppercase tracking-wider">Game Value</label><input type="number" step="0.01" id="gameValue" class="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"></div>
+<div><label class="block text-xs text-neutral-600 mb-1 uppercase tracking-wider">Box Value</label><input type="number" step="0.01" id="boxValue" class="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm"></div>
+</div>
+</div>
+<div id="playerNames" class="flex gap-3 mb-6 items-center"></div>
+<div class="bg-neutral-50 border border-neutral-200 rounded-lg p-5 mb-6">
+<div class="grid grid-cols-2 gap-3 mb-4">
+<button onclick="selectPlayer(1)" id="p1Btn" class="py-2.5 px-4 rounded-md text-sm font-medium">Player 1</button>
+<button onclick="selectPlayer(2)" id="p2Btn" class="py-2.5 px-4 rounded-md text-sm font-medium">Player 2</button>
+</div>
+<div class="flex gap-3">
+<input type="number" id="scoreInput" placeholder="Points" class="flex-1 px-4 py-2.5 border border-neutral-300 rounded-md">
+<button onclick="addScore()" class="px-6 py-2.5 bg-neutral-800 text-white rounded-md hover:bg-neutral-700 text-sm font-medium">+ Add</button>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-3 mb-6">
+<button onclick="undoScore()" class="py-2.5 px-4 bg-white border border-neutral-300 text-neutral-700 rounded-md hover:bg-neutral-50 text-sm">− Undo</button>
+<button onclick="newRound()" class="py-2.5 px-4 bg-white border border-neutral-300 text-neutral-700 rounded-md hover:bg-neutral-50 text-sm">New Round</button>
+<button onclick="resetAll()" class="py-2.5 px-4 bg-white border border-neutral-300 text-neutral-700 rounded-md hover:bg-neutral-50 text-sm">↻ Reset</button>
+</div>
+<div id="games" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+</div>
+</div>
+<div class="bg-white rounded-lg shadow-lg p-5 mt-4 text-sm text-neutral-700">
+<h4 class="font-medium text-neutral-900 mb-3 text-xs uppercase tracking-wider">Scoring Rules</h4>
+<div class="space-y-1.5 text-xs">
+<p>• Player's 1st win → Game 1 only</p>
+<p>• Player's 2nd win → Games 1 and 2</p>
+<p>• Player's 3rd+ wins → All three games</p>
+<p id="rulesText"></p>
+<p>• Shutout doubles all values</p>
+</div>
+</div>
+</div>
+</div>
+<script>
+let state = {
+player1Name: localStorage.getItem('p1Name') || 'Player 1',
+player2Name: localStorage.getItem('p2Name') || 'Player 2',
+player1Balance: parseFloat(localStorage.getItem('p1Bal')) || 0,
+player2Balance: parseFloat(localStorage.getItem('p2Bal')) || 0,
+player1WinCount: parseInt(localStorage.getItem('p1Wins')) || 0,
+player2WinCount: parseInt(localStorage.getItem('p2Wins')) || 0,
+winningScore: parseInt(localStorage.getItem('winScore')) || 100,
+gameValue: parseFloat(localStorage.getItem('gameVal')) || 5.00,
+boxValue: parseFloat(localStorage.getItem('boxVal')) || 1.00,
+games: JSON.parse(localStorage.getItem('games')) || [
+{id:1,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false},
+{id:2,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false},
+{id:3,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false}
+],
+handCount: parseInt(localStorage.getItem('hands')) || 0,
+selectedPlayer: 1,
+lastWinner: parseInt(localStorage.getItem('lastW')) || null,
+editingNames: false,
+editingBalances: false,
+showSettings: false
+};
+function save() {
+localStorage.setItem('p1Name', state.player1Name);
+localStorage.setItem('p2Name', state.player2Name);
+localStorage.setItem('p1Bal', state.player1Balance);
+localStorage.setItem('p2Bal', state.player2Balance);
+localStorage.setItem('p1Wins', state.player1WinCount);
+localStorage.setItem('p2Wins', state.player2WinCount);
+localStorage.setItem('winScore', state.winningScore);
+localStorage.setItem('gameVal', state.gameValue);
+localStorage.setItem('boxVal', state.boxValue);
+localStorage.setItem('games', JSON.stringify(state.games));
+localStorage.setItem('hands', state.handCount);
+localStorage.setItem('lastW', state.lastWinner);
+}
+function render() {
+let cg = state.games.filter(g => g.w).length;
+document.getElementById('status').innerHTML = 'Hand ' + state.handCount + ' • ' + cg + ' of 3 Complete' + 
+(state.lastWinner && state.handCount > 0 ? '<span class="ml-3 text-amber-400">Last: ' + 
+(state.lastWinner === 1 ? state.player1Name : state.player2Name) + '</span>' : '');
+document.getElementById('completeMsg').style.display = cg === 3 ? 'block' : 'none';
+if (state.editingBalances) {
+document.getElementById('balanceDisplay').style.display = 'none';
+document.getElementById('balanceEdit').style.display = 'block';
+document.getElementById('balanceEdit').innerHTML = '<div class="space-y-3"><div class="flex items-center gap-3"><span class="text-sm font-medium text-neutral-700 w-28">' + state.player1Name + '</span><input type="number" step="0.01" id="tempP1" value="' + state.player1Balance + '" class="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm"></div><div class="flex items-center gap-3"><span class="text-sm font-medium text-neutral-700 w-28">' + state.player2Name + '</span><input type="number" step="0.01" id="tempP2" value="' + state.player2Balance + '" class="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm"></div><button onclick="saveBalances()" class="w-full py-2 bg-neutral-800 text-white text-sm rounded-md hover:bg-neutral-700">Save Changes</button></div>';
+} else {
+document.getElementById('balanceDisplay').style.display = 'block';
+document.getElementById('balanceEdit').style.display = 'none';
+document.getElementById('balanceDisplay').innerHTML = '<div class="grid grid-cols-2 gap-6"><div class="text-center"><div class="text-sm text-neutral-600 mb-1">' + state.player1Name + '</div><div class="text-3xl font-light ' + (state.player1Balance >= 0 ? 'text-emerald-600' : 'text-rose-600') + '">$' + Math.abs(state.player1Balance).toFixed(2) + '</div><div class="text-xs text-neutral-500 mt-1">' + state.player1WinCount + ' hands</div></div><div class="text-center border-l border-neutral-200"><div class="text-sm text-neutral-600 mb-1">' + state.player2Name + '</div><div class="text-3xl font-light ' + (state.player2Balance >= 0 ? 'text-emerald-600' : 'text-rose-600') + '">$' + Math.abs(state.player2Balance).toFixed(2) + '</div><div class="text-xs text-neutral-500 mt-1">' + state.player2WinCount + ' hands</div></div></div>';
+}
+document.getElementById('settingsPanel').style.display = state.showSettings ? 'block' : 'none';
+document.getElementById('winningScore').value = state.winningScore;
+document.getElementById('gameValue').value = state.gameValue;
+document.getElementById('boxValue').value = state.boxValue;
+if (state.editingNames) {
+document.getElementById('playerNames').innerHTML = '<input type="text" id="name1" value="' + state.player1Name + '" class="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm"><input type="text" id="name2" value="' + state.player2Name + '" class="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm"><button onclick="saveNames()" class="px-4 py-2 bg-neutral-800 text-white text-sm rounded-md hover:bg-neutral-700">Done</button>';
+} else {
+document.getElementById('playerNames').innerHTML = '<div class="flex-1 text-center text-base font-medium text-neutral-800">' + state.player1Name + '</div><div class="flex-1 text-center text-base font-medium text-neutral-800">' + state.player2Name + '</div><button onclick="toggleNameEdit()" class="text-xs text-neutral-500 hover:text-neutral-700 uppercase tracking-wider px-2">Edit</button>';
+}
+document.getElementById('p1Btn').textContent = state.player1Name;
+document.getElementById('p2Btn').textContent = state.player2Name;
+document.getElementById('p1Btn').className = 'py-2.5 px-4 rounded-md text-sm font-medium ' + (state.selectedPlayer === 1 ? 'bg-neutral-800 text-white shadow-md' : 'bg-white text-neutral-600 border border-neutral-300');
+document.getElementById('p2Btn').className = 'py-2.5 px-4 rounded-md text-sm font-medium ' + (state.selectedPlayer === 2 ? 'bg-neutral-800 text-white shadow-md' : 'bg-white text-neutral-600 border border-neutral-300');
+let gh = '';
+state.games.forEach(g => {
+let bc = g.w ? 'border-amber-400 bg-amber-50' : 'border-neutral-200 bg-white';
+gh += '<div class="border rounded-lg p-4 ' + bc + '"><div class="flex justify-between items-center mb-4 pb-3 border-b border-neutral-200"><h3 class="text-sm font-medium text-neutral-600 uppercase tracking-wider">Game ' + g.id + '</h3>';
+if (g.w) gh += '<span class="text-xs text-amber-700 font-medium">' + (g.so ? 'SHUTOUT' : 'COMPLETE') + '</span>';
+gh += '</div><div class="space-y-3 mb-4"><div class="flex justify-between items-center p-3 rounded-md ' + (g.w === 1 ? 'bg-amber-100 border border-amber-300' : 'bg-neutral-50') + '"><span class="text-sm text-neutral-700">' + state.player1Name + '</span><span class="text-2xl font-light text-neutral-900">' + g.p1 + '</span></div><div class="flex justify-between items-center p-3 rounded-md ' + (g.w === 2 ? 'bg-amber-100 border border-amber-300' : 'bg-neutral-50') + '"><span class="text-sm text-neutral-700">' + state.player2Name + '</span><span class="text-2xl font-light text-neutral-900">' + g.p2 + '</span></div></div>';
+if (g.p1s.length > 0 || g.p2s.length > 0) {
+gh += '<div class="pt-3 border-t border-neutral-200 text-xs text-neutral-500 space-y-1">';
+if (g.p1s.length > 0) gh += '<div>' + state.player1Name + ': ' + g.p1s.join(', ') + '</div>';
+if (g.p2s.length > 0) gh += '<div>' + state.player2Name + ': ' + g.p2s.join(', ') + '</div>';
+gh += '</div>';
+}
+gh += '</div>';
+});
+document.getElementById('games').innerHTML = gh;
+document.getElementById('rulesText').textContent = '• Game won at ' + state.winningScore + ' points • $' + state.gameValue.toFixed(2) + ' per game • $' + state.boxValue.toFixed(2) + ' per box';
+}
+function toggleSettings() { state.showSettings = !state.showSettings; render(); }
+function toggleNameEdit() { state.editingNames = !state.editingNames; render(); }
+function toggleBalanceEdit() { state.editingBalances = !state.editingBalances; render(); }
+function saveNames() { state.player1Name = document.getElementById('name1').value; state.player2Name = document.getElementById('name2').value; state.editingNames = false; save(); render(); }
+function saveBalances() { state.player1Balance = parseFloat(document.getElementById('tempP1').value) || 0; state.player2Balance = parseFloat(document.getElementById('tempP2').value) || 0; state.editingBalances = false; save(); render(); }
+function selectPlayer(p) { state.selectedPlayer = p; render(); }
+function addScore() {
+let pts = parseInt(document.getElementById('scoreInput').value);
+if (!pts || pts < 0) return;
+state.handCount++;
+state.lastWinner = state.selectedPlayer;
+if (state.selectedPlayer === 1) state.player1WinCount++; else state.player2WinCount++;
+state.games.forEach(g => {
+if (g.w) return;
+let should = false;
+if (state.selectedPlayer === 1) {
+if (g.id === 1 && state.player1WinCount >= 1) should = true;
+if (g.id === 2 && state.player1WinCount >= 2) should = true;
+if (g.id === 3 && state.player1WinCount >= 3) should = true;
+} else {
+if (g.id === 1 && state.player2WinCount >= 1) should = true;
+if (g.id === 2 && state.player2WinCount >= 2) should = true;
+if (g.id === 3 && state.player2WinCount >= 3) should = true;
+}
+if (should) {
+if (state.selectedPlayer === 1) {
+g.p1 += pts;
+g.p1s.push(pts);
+if (g.p1 >= state.winningScore) {
+let bb = (g.p1s.length - g.p2s.length) * state.boxValue;
+let so = g.p2 === 0;
+g.so = so;
+g.w = 1;
+let m = state.gameValue + bb;
+if (so) m *= 2;
+state.player1Balance += m;
+state.player2Balance -= m;
+}
+} else {
+g.p2 += pts;
+g.p2s.push(pts);
+if (g.p2 >= state.winningScore) {
+let bb = (g.p2s.length - g.p1s.length) * state.boxValue;
+let so = g.p1 === 0;
+g.so = so;
+g.w = 2;
+let m = state.gameValue + bb;
+if (so) m *= 2;
+state.player2Balance += m;
+state.player1Balance -= m;
+}
+}
+}
+});
+document.getElementById('scoreInput').value = '';
+save();
+render();
+}
+function undoScore() {
+if (state.handCount === 0) return;
+state.handCount--;
+if (state.handCount === 0) state.lastWinner = null;
+if (state.selectedPlayer === 1) state.player1WinCount = Math.max(0, state.player1WinCount - 1);
+else state.player2WinCount = Math.max(0, state.player2WinCount - 1);
+state.games.forEach(g => {
+if (state.selectedPlayer === 1 && g.p1s.length > 0) {
+let ls = g.p1s[g.p1s.length - 1];
+g.p1s.pop();
+if (g.w === 1) {
+let bb = ((g.p1s.length + 1) - g.p2s.length) * state.boxValue;
+let m = state.gameValue + bb;
+if (g.so) m *= 2;
+state.player1Balance -= m;
+state.player2Balance += m;
+g.w = null;
+g.so = false;
+}
+g.p1 -= ls;
+} else if (state.selectedPlayer === 2 && g.p2s.length > 0) {
+let ls = g.p2s[g.p2s.length - 1];
+g.p2s.pop();
+if (g.w === 2) {
+let bb = ((g.p2s.length + 1) - g.p1s.length) * state.boxValue;
+let m = state.gameValue + bb;
+if (g.so) m *= 2;
+state.player2Balance -= m;
+state.player1Balance += m;
+g.w = null;
+g.so = false;
+}
+g.p2 -= ls;
+}
+});
+save();
+render();
+}
+function newRound() {
+state.games = [{id:1,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false},{id:2,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false},{id:3,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false}];
+state.handCount = 0;
+state.player1WinCount = 0;
+state.player2WinCount = 0;
+state.lastWinner = null;
+save();
+render();
+}
+function resetAll() {
+state.games = [{id:1,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false},{id:2,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false},{id:3,p1:0,p2:0,p1s:[],p2s:[],w:null,so:false}];
+state.handCount = 0;
+state.player1Balance = 0;
+state.player2Balance = 0;
+state.player1WinCount = 0;
+state.player2WinCount = 0;
+state.lastWinner = null;
+save();
+render();
+}
+document.getElementById('winningScore').addEventListener('change', e => { state.winningScore = parseInt(e.target.value) || 100; save(); render(); });
+document.getElementById('gameValue').addEventListener('change', e => { state.gameValue = parseFloat(e.target.value) || 0; save(); render(); });
+document.getElementById('boxValue').addEventListener('change', e => { state.boxValue = parseFloat(e.target.value) || 0; save(); render(); });
+document.getElementById('scoreInput').addEventListener('keypress', e => { if (e.key === 'Enter') addScore(); });
+render();
+</script>
+</body>
+</html>
