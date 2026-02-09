@@ -10,7 +10,6 @@
     <title>Hollywood Gin Rummy Scoresheet</title>
     
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%23171717'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='120'>🃏</text></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -26,11 +25,6 @@
         input[type="number"],
         input[type="text"] {
             font-size: 16px;
-        }
-        @supports (-webkit-touch-callout: none) {
-            body {
-                padding-bottom: env(safe-area-inset-bottom);
-            }
         }
     </style>
 </head>
@@ -615,4 +609,17 @@
                         </div>
                       ))}
                     </div>
-                  
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-lg p-5 mt-4 text-sm text-neutral-700">
+                  <h4 className="font-medium text-neutral-900 mb-3 text-xs uppercase tracking-wider">Scoring Rules</h4>
+                  <div className="space-y-1.5 text-xs">
+                    <p>• Player's 1st win → Game 1 only</p>
+                    <p>• Player's 2nd win → Games 1 and 2</p>
+                    <p>• Player's 3rd+ wins → All three games</p>
+                    <p>• Game won at {winningScore} points • ${gameValue.toFixed(2)} per game • ${boxValue.toFixed(2)} per box</p>
+                    <p>• Shutout doubles all values</p>
+                  </div>
+                </div>
+              
