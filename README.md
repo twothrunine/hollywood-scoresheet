@@ -18,7 +18,7 @@ Works Offline: Access your scoresheet anytime, no internet required
 
 How to Use
 As a Web App
-Visit the live app: [Your GitHub Pages URL here]
+Visit the live app: https://twothrunine.github.io/hollywood-scoresheet
 Install on iPhone
 
 Open the app in Safari
